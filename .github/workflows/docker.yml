@@ -1,17 +1,16 @@
 name: Docker Image CI
 
 # Builds the self-contained Dockerfile (frontend + backend) for linux/amd64
-# and pushes the result to Docker Hub: toithichcakhia/s-ui.
+# and pushes the result to Docker Hub: toithichcakhia/s-ui. Runs only when a
+# GitHub Release is published (or on manual dispatch), so a plain push does
+# not build or publish another image.
 #
 # Required repository secrets (Settings -> Secrets and variables -> Actions):
 #   DOCKER_HUB_USERNAME  - your Docker Hub username
 #   DOCKER_HUB_TOKEN     - a Docker Hub access token (not your password)
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "*"
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -107,10 +106,9 @@ jobs:
         with:
           images: ${{ env.IMAGE }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=tag
+            type=raw,value=${{ github.event.release.tag_name || github.ref_name }},enable=${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
             type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
 
       - name: Build and push
         uses: docker/build-push-action@v7

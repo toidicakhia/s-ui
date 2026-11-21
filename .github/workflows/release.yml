@@ -4,11 +4,6 @@ on:
   workflow_dispatch:
   release:
     types: [published]
-  push:
-    branches:
-      - main
-    tags:
-      - "*"
 
 permissions:
   contents: read
@@ -21,14 +16,14 @@ env:
 
 jobs:
   test:
-    # Skipped on a tag and on a published release: both ship a commit that
-    # already went through this gate on main.
-    if: ${{ github.event_name != 'release' && !startsWith(github.ref, 'refs/tags/') }}
+    # A published release ships a commit that already went through this gate
+    # on a pull request; only manual runs exercise it here.
+    if: ${{ github.event_name != 'release' }}
     uses: ./.github/workflows/test.yml
 
   build-frontend:
     needs: test
-    # A skipped gate is not a failed one, so the build still runs on a tag.
+    # A skipped gate is not a failed one, so the build still runs on a release.
     if: ${{ always() && needs.test.result != 'failure' && needs.test.result != 'cancelled' }}
     runs-on: ubuntu-26.04
     steps:
@@ -60,7 +55,7 @@ jobs:
         working-directory: frontend
 
       - name: Save node_modules
-        if: github.ref == 'refs/heads/main' && steps.node-modules.outputs.cache-hit != 'true'
+        if: github.event_name == 'release' && steps.node-modules.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: frontend/node_modules
@@ -261,10 +256,10 @@ jobs:
           cp s-ui.service s-ui/
           cp s-ui.sh s-ui/
 
-      # Only main saves: a tag's cache is scoped to that tag and no later run
-      # could read it.
+      # A published release saves the cache under a ref-independent key, so
+      # the next release restores it. Manual runs only restore.
       - name: Save Go build cache
-        if: github.ref == 'refs/heads/main' && steps.go-build-cache.outputs.cache-hit != 'true'
+        if: github.event_name == 'release' && steps.go-build-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ steps.go-env.outputs.gocache }}
@@ -371,7 +366,7 @@ jobs:
           key: ${{ steps.go-mod-cache.outputs.cache-primary-key }}
 
       - name: Save Go build cache
-        if: github.ref == 'refs/heads/main' && steps.go-build-cache.outputs.cache-hit != 'true'
+        if: github.event_name == 'release' && steps.go-build-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ steps.go-env.outputs.gocache }}
@@ -404,8 +399,7 @@ jobs:
       always() &&
       needs.build-linux.result == 'success' &&
       needs.build-windows.result == 'success' &&
-      ((github.event_name == 'release' && github.event.action == 'published') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')))
+      github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-26.04
     permissions:
       contents: write
