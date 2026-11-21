@@ -1,7 +1,7 @@
 name: Docker Image CI
 
 # Builds the self-contained Dockerfile (frontend + backend) for linux/amd64
-# and pushes the result to the Docker Hub repository configured below.
+# and pushes the result to Docker Hub: toithichcakhia/s-ui.
 #
 # Required repository secrets (Settings -> Secrets and variables -> Actions):
 #   DOCKER_HUB_USERNAME  - your Docker Hub username
@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE: toidicakhia/s-ui
+  IMAGE: toithichcakhia/s-ui
 
 jobs:
   build-and-push:
@@ -57,10 +57,10 @@ jobs:
           USER="$DOCKER_HUB_USERNAME"
           REPO="s-ui"
 
-          # IMAGE below is hardcoded to toidicakhia/s-ui; a different login
+          # IMAGE below is hardcoded to toithichcakhia/s-ui; a different login
           # account would silently push to the wrong namespace (or fail).
-          if [ "$USER" != "toidicakhia" ]; then
-            echo "DOCKER_HUB_USERNAME must be 'toidicakhia' for image toidicakhia/s-ui, got '$USER'" >&2
+          if [ "$USER" != "toithichcakhia" ]; then
+            echo "DOCKER_HUB_USERNAME must be 'toithichcakhia' for image toithichcakhia/s-ui, got '$USER'" >&2
             exit 1
           fi
 
