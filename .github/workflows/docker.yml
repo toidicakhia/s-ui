@@ -46,6 +46,54 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
+      # Docker Hub no longer auto-creates repositories on push. Create it
+      # here (idempotently) so a fresh fork can publish on the first try.
+      - name: Ensure Docker Hub repository exists
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+        run: |
+          set -e
+          USER="$DOCKER_HUB_USERNAME"
+          REPO="s-ui"
+
+          JWT=$(curl -fsS -X POST https://hub.docker.com/v2/auth/token \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -nc --arg u "$USER" --arg s "$DOCKER_HUB_TOKEN" '{identifier:$u, secret:$s}')" \
+            | jq -r '.access_token')
+          [ -n "$JWT" ] || { echo "Could not get a Docker Hub token" >&2; exit 1; }
+
+          if curl -fsS -o /dev/null "https://hub.docker.com/v2/repositories/${USER}/${REPO}/"; then
+            echo "Repository ${USER}/${REPO} already exists"
+            exit 0
+          fi
+
+          PAYLOAD=$(jq -nc --arg n "$REPO" --arg ns "$USER" \
+            '{name:$n, namespace:$ns, description:"s-ui panel image", is_private:false, registry:"docker.io"}')
+
+          echo "Creating repository ${USER}/${REPO}"
+          CODE=$(curl -sS -o /tmp/hub-create.json -w '%{http_code}' \
+            -X POST "https://hub.docker.com/v2/namespaces/${USER}/repositories" \
+            -H "Authorization: Bearer ${JWT}" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            -d "$PAYLOAD")
+          if [ "$CODE" != "200" ] && [ "$CODE" != "201" ]; then
+            echo "Modern API returned HTTP $CODE, trying legacy endpoint" >&2
+            CODE=$(curl -sS -o /tmp/hub-create.json -w '%{http_code}' \
+              -X POST "https://hub.docker.com/v2/repositories/" \
+              -H "Authorization: JWT ${JWT}" \
+              -H 'Content-Type: application/json' \
+              -H 'Accept: application/json' \
+              -d "$PAYLOAD")
+          fi
+          if [ "$CODE" != "200" ] && [ "$CODE" != "201" ]; then
+            echo "Failed to create repository (HTTP $CODE):" >&2
+            cat /tmp/hub-create.json >&2 || true
+            exit 1
+          fi
+          echo "Repository ${USER}/${REPO} created"
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6
