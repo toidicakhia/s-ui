@@ -57,6 +57,13 @@ jobs:
           USER="$DOCKER_HUB_USERNAME"
           REPO="s-ui"
 
+          # IMAGE below is hardcoded to toidicakhia/s-ui; a different login
+          # account would silently push to the wrong namespace (or fail).
+          if [ "$USER" != "toidicakhia" ]; then
+            echo "DOCKER_HUB_USERNAME must be 'toidicakhia' for image toidicakhia/s-ui, got '$USER'" >&2
+            exit 1
+          fi
+
           JWT=$(curl -fsS -X POST https://hub.docker.com/v2/auth/token \
             -H 'Content-Type: application/json' \
             -d "$(jq -nc --arg u "$USER" --arg s "$DOCKER_HUB_TOKEN" '{identifier:$u, secret:$s}')" \
