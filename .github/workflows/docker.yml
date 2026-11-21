@@ -1,169 +1,70 @@
 name: Docker Image CI
+
+# Builds the self-contained Dockerfile (frontend + backend) for linux/amd64
+# and pushes the result to the Docker Hub repository configured below.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   DOCKER_HUB_USERNAME  - your Docker Hub username
+#   DOCKER_HUB_TOKEN     - a Docker Hub access token (not your password)
 on:
   push:
+    branches:
+      - main
     tags:
       - "*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Extra tag to publish (optional), e.g. test"
+        required: false
+        default: ""
 
-# The workflow pushes images; nothing here writes to the repository.
+# This workflow only pushes an image; it never writes to the repository.
 permissions:
   contents: read
-  packages: write
+
+env:
+  IMAGE: toidicakhia/s-ui
 
 jobs:
-  frontend-build:
+  build-and-push:
     runs-on: ubuntu-26.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
+          # The Dockerfile builds the frontend from frontend/, which is a
+          # submodule, so fetch it recursively.
           submodules: recursive
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      # Read only: this runs on tags, whose caches no later run can see.
-      # release.yml saves the entry on main under the same key.
-      - name: Restore node_modules
-        id: node-modules
-        uses: actions/cache/restore@v6
-        with:
-          path: frontend/node_modules
-          key: node-modules-${{ runner.os }}-node26-${{ hashFiles('frontend/package-lock.json') }}
-      - name: Install frontend dependencies
-        if: steps.node-modules.outputs.cache-hit != 'true'
-        run: npm ci
-        working-directory: frontend
-      - name: Build frontend
-        run: npm run build
-        working-directory: frontend
-      - name: Upload frontend build artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: frontend-dist
-          path: frontend/dist/
 
-  build:
-    needs: frontend-build
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { platform: linux/amd64 }
-          - { platform: linux/386 }
-          - { platform: linux/arm64/v8 }
-          - { platform: linux/arm/v7 }
-          - { platform: linux/arm/v6 }
-    runs-on: ubuntu-26.04
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-      - name: Download frontend build artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: frontend-dist
-          path: frontend_dist
-      - name: Prepare
-        run: |
-          platform="${{ matrix.platform }}"
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: |
-            alireza7/s-ui
-            ghcr.io/alireza0/s-ui
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=pep440,pattern={{version}}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+
       - name: Login to Docker Hub
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
-      - name: Login to GHCR
-        uses: docker/login-action@v4
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push by digest
-        id: build
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: Dockerfile.frontend-artifact
-          platforms: ${{ matrix.platform }}
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: |
-            alireza7/s-ui
-            ghcr.io/alireza0/s-ui
-          cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}
-          cache-to: ${{ github.ref == 'refs/heads/main' && format('type=gha,scope={0},mode=max', env.PLATFORM_PAIR) || '' }}
-          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-      - name: Export digest
-        run: |
-          mkdir -p ${{ runner.temp }}/digests
-          digest="${{ steps.build.outputs.digest }}"
-          echo "${digest#sha256:}" > "${{ runner.temp }}/digests/${digest#sha256:}"
-      - name: Upload digest
-        uses: actions/upload-artifact@v7
-        with:
-          name: digests-${{ env.PLATFORM_PAIR }}
-          path: ${{ runner.temp }}/digests/*
-          if-no-files-found: error
-          retention-days: 1
-
-  merge:
-    needs: build
-    runs-on: ubuntu-26.04
-    steps:
-      - name: Download digests
-        uses: actions/download-artifact@v8
-        with:
-          path: ${{ runner.temp }}/digests
-          pattern: digests-*
-          merge-multiple: true
-      - name: Login to Docker Hub
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-      - name: Login to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: |
-            alireza7/s-ui
-            ghcr.io/alireza0/s-ui
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=pep440,pattern={{version}}
-      - name: Create manifest list and push
-        env:
-          DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
-        working-directory: ${{ runner.temp }}/digests
-        run: |
-          set -e
-          for img in alireza7/s-ui ghcr.io/alireza0/s-ui; do
-            TAGS_ARGS=$(echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -cr --arg img "$img" '.tags | map(select(startswith($img))) | map("-t " + .) | join(" ")')
-            DIGEST_REFS=$(for f in *; do echo -n "${img}@sha256:$(cat "$f") "; done)
-            docker buildx imagetools create $TAGS_ARGS $DIGEST_REFS
-          done
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
