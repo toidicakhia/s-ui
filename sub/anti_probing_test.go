@@ -37,12 +37,12 @@ func antiProbingDB(t *testing.T) {
 	})
 }
 
-// antiProbingSubEngine builds the subscription server's real router, the
-// same engine sub.Server.Start serves.
+// antiProbingSubEngine builds the subscription routes exactly as the panel
+// engine mounts them.
 func antiProbingSubEngine(t *testing.T) (*gin.Engine, string) {
 	t.Helper()
-	engine, err := NewServer().initRouter()
-	if err != nil {
+	engine := gin.New()
+	if err := RegisterRoutes(engine.Group("/")); err != nil {
 		t.Fatal(err)
 	}
 	settings := &service.SettingService{}

@@ -19,6 +19,7 @@ import (
 	"github.com/alireza0/s-ui/middleware"
 	"github.com/alireza0/s-ui/network"
 	"github.com/alireza0/s-ui/service"
+	"github.com/alireza0/s-ui/sub"
 	"github.com/alireza0/s-ui/util/common"
 
 	"github.com/gin-contrib/gzip"
@@ -156,6 +157,14 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	// CORS preflight it never answers.
 	group_api := engine.Group(base_url+"api", middleware.SameOrigin())
 	api.NewAPIHandler(group_api, apiv2)
+
+	// Subscriptions are served by this same listener, so the panel port is
+	// the only port that needs to be exposed. They inherit the panel's TLS
+	// configuration and domain validator; only their path and custom headers
+	// remain independently configurable.
+	if err := sub.RegisterRoutes(engine.Group("/")); err != nil {
+		return nil, err
+	}
 
 	// Serve index.html as the entry point
 	// Handle all other routes by serving index.html

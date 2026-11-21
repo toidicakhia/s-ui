@@ -5,10 +5,10 @@ s-ui is a self-hosted web panel that manages an embedded sing-box proxy core (in
 
 - **Admin panel** (`web/`, `api/apiHandler.go`): a Vue SPA (`frontend/`, a submodule) plus a session-cookie JSON API under `<base>/api`. Login, password change, config save, DB import/export, token management, self-update. Reachable from the Internet in most deployments; anyone can reach the login form.
 - **Token API** (`api/apiV2Handler.go`, `<base>/apiv2`): the same actions, authenticated by an API token header instead of a session.
-- **Subscription server** (`sub/`): a separate listener that serves `/<subPath>/<subid>` (plain links, `?format=json`, `?format=clash`) to every end user. It is unauthenticated apart from knowing the `subid`, and it faces all clients of the panel, not just the operator.
+- **Subscription server** (`sub/`): routes mounted on the panel's listener that serve `/<subPath>/<subid>` (plain links, `?format=json`, `?format=clash`) to every end user. It is unauthenticated apart from knowing the `subid`, and it faces all clients of the panel, not just the operator.
 
 Untrusted input:
-- Everything an unauthenticated Internet client sends to the panel port and the subscription port (paths, headers, cookies, `X-Forwarded-*`, Host, query strings, the login body).
+- Everything an unauthenticated Internet client sends to the (single) panel/subscription port (paths, headers, cookies, `X-Forwarded-*`, Host, query strings, the login body).
 - Subscription IDs and query parameters on the subscription server.
 - Remote content the panel fetches: external subscription URLs (`util/subToJson.go`), link/sub conversion (`linkConvert`, `subConvert`), GitHub release metadata and downloads for self-update (`service/update.go`, `service/upgrade.go`), Cloudflare WARP API responses (`service/warp.go`).
 - An uploaded database file (`importdb`, `database/backup.go`) is operator-supplied but should still never lead to code execution or file writes outside the DB folder.
@@ -34,7 +34,7 @@ Out of scope:
 
 ## How to exercise it
 - The image has the binary at `/src/sui`. Run it with a scratch DB: `SUI_DB_FOLDER=/tmp/sui-db /src/sui` (first run creates the DB and default admin; `/src/sui admin -h` and `/src/sui setting -h` show how to set credentials, ports and paths).
-- The panel defaults to port 2095 and the subscription server to 2096; both are plain HTTP unless TLS is configured.
+- The panel and subscriptions share port 2095 by default (subscriptions live under `/sub/`); traffic is plain HTTP unless TLS is configured.
 - Tests: `. ./build-tags.sh && go test -tags "$(tags_for test)" ./...` from `/src`. End-to-end API tests live in `api/login_e2e_test.go` and `api/apiv2_e2e_test.go`; subscription hardening tests in `sub/hardening_test.go` and `sub/anti_probing_test.go` are good templates for reproducers.
 - Frontend: `cd /src/frontend && npm test` (vitest).
 

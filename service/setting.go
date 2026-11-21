@@ -79,12 +79,7 @@ var defaultValueMap = map[string]string{
 	"trafficAge":         "30",
 	"statsBucketSeconds": "60",
 	"timeLocation":       "Asia/Tehran",
-	"subListen":          "",
-	"subPort":            "2096",
 	"subPath":            "/sub/",
-	"subDomain":          "",
-	"subCertFile":        "",
-	"subKeyFile":         "",
 	"subUpdates":         "12",
 	"subEncode":          "true",
 	"subShowInfo":        "false",
@@ -320,18 +315,6 @@ func (s *SettingService) GetTimeLocation() (*time.Location, error) {
 	return location, nil
 }
 
-func (s *SettingService) GetSubListen() (string, error) {
-	return s.getString("subListen")
-}
-
-func (s *SettingService) GetSubPort() (int, error) {
-	return s.getInt("subPort")
-}
-
-func (s *SettingService) SetSubPort(subPort int) error {
-	return s.setInt("subPort", subPort)
-}
-
 func (s *SettingService) GetSubPath() (string, error) {
 	subPath, err := s.getString("subPath")
 	if err != nil {
@@ -354,18 +337,6 @@ func (s *SettingService) SetSubPath(subPath string) error {
 		subPath += "/"
 	}
 	return s.setString("subPath", subPath)
-}
-
-func (s *SettingService) GetSubDomain() (string, error) {
-	return s.getString("subDomain")
-}
-
-func (s *SettingService) GetSubCertFile() (string, error) {
-	return s.getString("subCertFile")
-}
-
-func (s *SettingService) GetSubKeyFile() (string, error) {
-	return s.getString("subKeyFile")
 }
 
 func (s *SettingService) GetSubUpdates() (int, error) {
@@ -423,15 +394,17 @@ func (s *SettingService) GetFinalSubURI(host string) (string, error) {
 	if SubURI != "" {
 		return SubURI, nil
 	}
+	// Subscriptions are served by the panel listener, so they follow the
+	// panel's protocol, domain and port rather than carrying a second set.
 	protocol := "http"
-	if (*allSetting)["subKeyFile"] != "" && (*allSetting)["subCertFile"] != "" {
+	if (*allSetting)["webKeyFile"] != "" && (*allSetting)["webCertFile"] != "" {
 		protocol = "https"
 	}
-	if (*allSetting)["subDomain"] != "" {
-		host = (*allSetting)["subDomain"]
+	if (*allSetting)["webDomain"] != "" {
+		host = (*allSetting)["webDomain"]
 	}
-	port := ":" + (*allSetting)["subPort"]
-	if (port == "80" && protocol == "http") || (port == "443" && protocol == "https") {
+	port := ":" + (*allSetting)["webPort"]
+	if (port == ":80" && protocol == "http") || (port == ":443" && protocol == "https") {
 		port = ""
 	}
 	return protocol + "://" + host + port + (*allSetting)["subPath"], nil
@@ -481,9 +454,7 @@ func (s *SettingService) Save(tx *gorm.DB, data json.RawMessage) error {
 
 		// Secure file existence check
 		if obj != "" && (key == "webCertFile" ||
-			key == "webKeyFile" ||
-			key == "subCertFile" ||
-			key == "subKeyFile") {
+			key == "webKeyFile") {
 			err = s.fileExists(obj)
 			if err != nil {
 				return common.NewError(" -> ", obj, " is not exists")

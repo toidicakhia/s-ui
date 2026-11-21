@@ -92,9 +92,6 @@ if "%panel_port%"=="" set "panel_port=2095"
 set /p panel_path="Enter panel path (default: /app/): "
 if "%panel_path%"=="" set "panel_path=/app/"
 
-set /p sub_port="Enter subscription port (default: 2096): "
-if "%sub_port%"=="" set "sub_port=2096"
-
 set /p sub_path="Enter subscription path (default: /sub/): "
 if "%sub_path%"=="" set "sub_path=/sub/"
 
@@ -102,7 +99,7 @@ REM Apply settings
 echo.
 echo Applying settings...
 cd /d "%INSTALL_DIR%"
-sui.exe setting -port %panel_port% -path "%panel_path%" -subPort %sub_port% -subPath "%sub_path%"
+sui.exe setting -port %panel_port% -path "%panel_path%" -subPath "%sub_path%"
 
 REM Get admin credentials
 echo.
@@ -171,8 +168,7 @@ echo.
 echo Configuration:
 echo   Panel Port: %panel_port%
 echo   Panel Path: %panel_path%
-echo   Subscription Port: %sub_port%
-echo   Subscription Path: %sub_path%
+echo   Subscription Path: %sub_path% (served on the panel port)
 echo   Admin Username: %admin_username%
 echo.
 echo Access URLs:
@@ -180,7 +176,7 @@ for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /i "IPv4"') do (
     set "ip=%%i"
     set "ip=!ip: =!"
     echo   Panel: http://!ip!:%panel_port%%panel_path%
-    echo   Subscription: http://!ip!:%sub_port%%sub_path%
+    echo   Subscription: http://!ip!:%panel_port%%sub_path%
 )
 echo.
 echo Service name: %SERVICE_NAME%

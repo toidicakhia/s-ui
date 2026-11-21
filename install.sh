@@ -55,7 +55,6 @@ d en finished_modify "Install/update finished! For security it's recommended to 
 d en ask_modify "Do you want to continue with the modification [y/n]? "
 d en enter_port "Enter the panel port (leave blank for existing/default value):"
 d en enter_path "Enter the panel path (leave blank for existing/default value):"
-d en enter_subport "Enter the subscription port (leave blank for existing/default value):"
 d en enter_subpath "Enter the subscription path (leave blank for existing/default value):"
 d en initializing "Initializing, please wait..."
 d en ask_admin "Do you want to change admin credentials [y/n]? "
@@ -96,7 +95,6 @@ d fa finished_modify "نصب/به روزرسانی به پایان رسید! ب�
 d fa ask_modify "آیا می خواهید تنظیمات را تغییر دهید [y/n]؟ "
 d fa enter_port "پورت پنل را وارد کنید (برای مقدار فعلی/پیش فرض خالی بگذارید):"
 d fa enter_path "مسیر پنل را وارد کنید (برای مقدار فعلی/پیش فرض خالی بگذارید):"
-d fa enter_subport "پورت اشتراک (subscription) را وارد کنید (برای مقدار فعلی/پیش فرض خالی بگذارید):"
 d fa enter_subpath "مسیر اشتراک (subscription) را وارد کنید (برای مقدار فعلی/پیش فرض خالی بگذارید):"
 d fa initializing "در حال آماده سازی، لطفاً صبر کنید..."
 d fa ask_admin "آیا می خواهید نام کاربری و رمز ادمین را تغییر دهید [y/n]؟ "
@@ -137,7 +135,6 @@ d ru finished_modify "Установка/обновление завершено
 d ru ask_modify "Хотите изменить настройки [y/n]? "
 d ru enter_port "Введите порт панели (оставьте пустым для текущего/значения по умолчанию):"
 d ru enter_path "Введите путь панели (оставьте пустым для текущего/значения по умолчанию):"
-d ru enter_subport "Введите порт подписки (оставьте пустым для текущего/значения по умолчанию):"
 d ru enter_subpath "Введите путь подписки (оставьте пустым для текущего/значения по умолчанию):"
 d ru initializing "Инициализация, пожалуйста, подождите..."
 d ru ask_admin "Хотите изменить учётные данные администратора [y/n]? "
@@ -178,7 +175,6 @@ d vi finished_modify "Cài đặt/cập nhật hoàn tất! Vì bảo mật, b�
 d vi ask_modify "Bạn có muốn tiếp tục chỉnh sửa [y/n]? "
 d vi enter_port "Nhập cổng bảng điều khiển (để trống để giữ giá trị hiện tại/mặc định):"
 d vi enter_path "Nhập đường dẫn bảng điều khiển (để trống để giữ giá trị hiện tại/mặc định):"
-d vi enter_subport "Nhập cổng subscription (để trống để giữ giá trị hiện tại/mặc định):"
 d vi enter_subpath "Nhập đường dẫn subscription (để trống để giữ giá trị hiện tại/mặc định):"
 d vi initializing "Đang khởi tạo, vui lòng đợi..."
 d vi ask_admin "Bạn có muốn thay đổi thông tin đăng nhập quản trị [y/n]? "
@@ -219,7 +215,6 @@ d zhcn finished_modify "安装/更新完成！为了安全，建议修改面板�
 d zhcn ask_modify "是否继续修改设置 [y/n]？ "
 d zhcn enter_port "请输入面板端口（留空则使用现有/默认值）："
 d zhcn enter_path "请输入面板路径（留空则使用现有/默认值）："
-d zhcn enter_subport "请输入订阅端口（留空则使用现有/默认值）："
 d zhcn enter_subpath "请输入订阅路径（留空则使用现有/默认值）："
 d zhcn initializing "正在初始化，请稍候..."
 d zhcn ask_admin "是否修改管理员账号密码 [y/n]？ "
@@ -260,7 +255,6 @@ d zhtw finished_modify "安裝/更新完成！為了安全，建議修改面板�
 d zhtw ask_modify "是否繼續修改設定 [y/n]？ "
 d zhtw enter_port "請輸入面板連接埠（留空則使用現有/預設值）："
 d zhtw enter_path "請輸入面板路徑（留空則使用現有/預設值）："
-d zhtw enter_subport "請輸入訂閱連接埠（留空則使用現有/預設值）："
 d zhtw enter_subpath "請輸入訂閱路徑（留空則使用現有/預設值）："
 d zhtw initializing "正在初始化，請稍候..."
 d zhtw ask_admin "是否修改管理員帳號密碼 [y/n]？ "
@@ -406,8 +400,6 @@ config_after_install() {
         read -r config_path
 
         # Sub configuration
-        echo -e "${yellow}$(t enter_subport)${plain}"
-        read -r config_subPort
         echo -e "${yellow}$(t enter_subpath)${plain}"
         read -r config_subPath
 
@@ -416,7 +408,6 @@ config_after_install() {
         params=()
         [ -z "$config_port" ] || params+=(-port "$config_port")
         [ -z "$config_path" ] || params+=(-path "$config_path")
-        [ -z "$config_subPort" ] || params+=(-subPort "$config_subPort")
         [ -z "$config_subPath" ] || params+=(-subPath "$config_subPath")
         /usr/local/s-ui/sui setting "${params[@]}"
 

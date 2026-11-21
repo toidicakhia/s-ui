@@ -22,7 +22,6 @@ func ParseCmd() {
 	var password string
 	var port int
 	var path string
-	var subPort int
 	var subPath string
 	var reset bool
 	var assumeYes bool
@@ -35,7 +34,6 @@ func ParseCmd() {
 	settingCmd.BoolVar(&show, "show", false, "show current settings")
 	settingCmd.IntVar(&port, "port", 0, "set panel port")
 	settingCmd.StringVar(&path, "path", "", "set panel path")
-	settingCmd.IntVar(&subPort, "subPort", 0, "set sub port")
 	settingCmd.StringVar(&subPath, "subPath", "", "set sub path")
 
 	adminCmd.BoolVar(&show, "show", false, "show first admin credentials")
@@ -119,7 +117,7 @@ func ParseCmd() {
 		case reset:
 			resetSetting()
 		default:
-			updateSetting(port, path, subPort, subPath)
+			updateSetting(port, path, subPath)
 			showSetting()
 		}
 

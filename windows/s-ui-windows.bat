@@ -214,14 +214,14 @@ echo ========================================
 echo.
 echo Local access:
 echo   Panel: http://localhost:2095
-echo   Subscription: http://localhost:2096
+echo   Subscription: http://localhost:2095/sub/
 echo.
 echo Network access:
 for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /i "IPv4"') do (
     set "ip=%%i"
     set "ip=!ip: =!"
     echo   Panel: http://!ip!:2095
-    echo   Subscription: http://!ip!:2096
+    echo   Subscription: http://!ip!:2095/sub/
 )
 echo.
 pause

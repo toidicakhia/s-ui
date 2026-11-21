@@ -58,9 +58,8 @@ Full documentation lives in the [Wiki](https://github.com/alireza0/s-ui/wiki):
 | [Settings Reference](https://github.com/alireza0/s-ui/wiki/Settings-Reference) | Every panel setting and its default |
 
 ## Default Installation Information
-- Panel Port: 2095
+- Panel Port: 2095 (panel and subscriptions share this single port)
 - Panel Path: /app/
-- Subscription Port: 2096
 - Subscription Path: /sub/
 - User/Password: admin
 
@@ -175,7 +174,7 @@ docker compose up -d
 ```shell
 mkdir s-ui && cd s-ui
 docker run -itd \
-    -p 2095:2095 -p 2096:2096 -p 443:443 -p 80:80 \
+    -p 2095:2095 -p 443:443 -p 80:80 \
     -v $PWD/db/:/app/db/ \
     -v $PWD/cert/:/root/cert/ \
     --name s-ui --restart=unless-stopped \
