@@ -2,6 +2,7 @@ package sub
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/alireza0/s-ui/logger"
@@ -39,7 +40,17 @@ func (s *SubHandler) subs(c *gin.Context) {
 	}
 	switch {
 	case format == "json":
-		result, headers, err = s.JsonService.GetJson(subId, format)
+		var inboundID uint
+		if raw := c.Query("inbound"); raw != "" {
+			parsed, parseErr := strconv.ParseUint(raw, 10, 64)
+			if parseErr != nil {
+				logger.Error(parseErr)
+				c.String(400, "Error!")
+				return
+			}
+			inboundID = uint(parsed)
+		}
+		result, headers, err = s.JsonService.GetJson(subId, inboundID)
 	case format == "clash":
 		result, headers, err = s.ClashService.GetClash(subId)
 	case format == "happ":

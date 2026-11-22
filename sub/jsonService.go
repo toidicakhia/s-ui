@@ -48,7 +48,12 @@ type JsonService struct {
 	LinkService
 }
 
-func (j *JsonService) GetJson(subId string, format string) (*string, []string, error) {
+// GetJson builds a sing-box config for a client. When inboundID is non-zero,
+// the config carries only that inbound's outbound: the sing-box app imports
+// each one as a separate remote profile. External subscription links stay out
+// of those profiles, since a profile is one node; the unfiltered config keeps
+// them and remains the "all inbounds" profile.
+func (j *JsonService) GetJson(subId string, inboundID uint) (*string, []string, error) {
 	var jsonConfig map[string]interface{}
 
 	client, inDatas, err := j.getData(subId)
@@ -56,14 +61,23 @@ func (j *JsonService) GetJson(subId string, format string) (*string, []string, e
 		return nil, nil, err
 	}
 
+	if inboundID != 0 {
+		inDatas, err = filterInbound(inDatas, inboundID)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	outbounds, outTags, err := j.getOutbounds(client.Config, inDatas, nodeRemark(&j.SettingService, client))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	extOutbounds, extTags := j.LinkService.GetExternalOutbounds(&client.Links)
-	*outbounds = append(*outbounds, extOutbounds...)
-	*outTags = append(*outTags, extTags...)
+	if inboundID == 0 {
+		extOutbounds, extTags := j.LinkService.GetExternalOutbounds(&client.Links)
+		*outbounds = append(*outbounds, extOutbounds...)
+		*outTags = append(*outTags, extTags...)
+	}
 
 	j.addDefaultOutbounds(outbounds, outTags)
 
@@ -84,6 +98,18 @@ func (j *JsonService) GetJson(subId string, format string) (*string, []string, e
 	headers := util.GetHeaders(client, updateInterval)
 
 	return &resultStr, headers, nil
+}
+
+// filterInbound narrows a client's inbounds to the one a per-inbound profile
+// asked for. An ID the client does not own is an error, not an empty profile:
+// serving a config with no node would look like a successful import.
+func filterInbound(inbounds []*model.Inbound, id uint) ([]*model.Inbound, error) {
+	for _, inbound := range inbounds {
+		if inbound.Id == id {
+			return []*model.Inbound{inbound}, nil
+		}
+	}
+	return nil, fmt.Errorf("inbound %d is not assigned to the client", id)
 }
 
 // uniqueOutboundTag keeps a name as the operator wrote it, falling back to a
