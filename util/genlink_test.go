@@ -237,6 +237,54 @@ func TestVmessGrpcCarriesTheServiceName(t *testing.T) {
 	}
 }
 
+// XTLS Vision only exists on a plain TCP connection wrapped in TLS. Emitting
+// the flow on a transport, or without TLS, produced a link sing-box refuses to
+// load even though the panel accepted the client.
+func TestVlessVisionFlowOnlyOverTlsTcp(t *testing.T) {
+	uid := map[string]interface{}{
+		"uuid": "11111111-1111-1111-1111-111111111111",
+		"flow": "xtls-rprx-vision",
+	}
+	withTls := func(inbound *model.Inbound) *model.Inbound {
+		inbound.TlsId = 1
+		inbound.Tls = &model.Tls{
+			Server: json.RawMessage(`{"enabled": true}`),
+			Client: json.RawMessage(`{}`),
+		}
+		return inbound
+	}
+
+	for _, tc := range []struct {
+		name     string
+		inbound  *model.Inbound
+		wantFlow bool
+	}{
+		{"tls tcp", withTls(inboundFor(t, "vless", nil)), true},
+		{"tls ws", withTls(inboundFor(t, "vless", map[string]interface{}{
+			"transport": map[string]interface{}{"type": "ws", "path": "/ws"},
+		})), false},
+		{"no tls", inboundFor(t, "vless", nil), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			links := LinkGenerator(clientConfigFor(t, "vless", uid), tc.inbound, "example.test", "")
+			if len(links) != 1 {
+				t.Fatalf("got %d links, want 1", len(links))
+			}
+			u, err := url.Parse(links[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := u.Query().Get("flow")
+			if tc.wantFlow && got != "xtls-rprx-vision" {
+				t.Errorf("flow = %q, want xtls-rprx-vision in %s", got, links[0])
+			}
+			if !tc.wantFlow && got != "" {
+				t.Errorf("flow = %q, want it left out of %s", got, links[0])
+			}
+		})
+	}
+}
+
 func TestWsLinksFallBackToTheSniForHost(t *testing.T) {
 	addrs := json.RawMessage(`[
 		{"server": "a.example.com", "server_port": 443, "tls": {"server_name": "one.example.com"}},
