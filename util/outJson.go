@@ -111,6 +111,11 @@ func addTls(out *map[string]interface{}, tls *model.Tls) {
 	if cipherSuites, ok := tlsServer["cipher_suites"]; ok {
 		tlsConfig["cipher_suites"] = cipherSuites
 	}
+	// The server half owns the handshake parameters, and the client has to
+	// offer the same curves or it cannot complete the handshake.
+	if curvePreferences, ok := tlsServer["curve_preferences"]; ok {
+		tlsConfig["curve_preferences"] = curvePreferences
+	}
 	// Both sides of the handshake are given the same limit, as with the
 	// versions and cipher suites above.
 	if handshakeTimeout, ok := tlsServer["handshake_timeout"]; ok {

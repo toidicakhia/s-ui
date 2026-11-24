@@ -97,6 +97,43 @@ func TestFillOutJsonTlsHandshakeTimeout(t *testing.T) {
 	}
 }
 
+// curve_preferences is set once on the server half of a TLS template, like the
+// versions and cipher suites, so the generated client config has to carry it
+// too. Otherwise the client offers sing-box's default curves and a server
+// restricted to another curve cannot complete the handshake.
+func TestFillOutJsonTlsCurvePreferences(t *testing.T) {
+	inbound := &model.Inbound{
+		Type:    "vless",
+		Tag:     "vless-in",
+		Options: json.RawMessage(`{"listen_port": 443}`),
+		OutJson: json.RawMessage(`{}`),
+		TlsId:   1,
+		Tls: &model.Tls{
+			Id:     1,
+			Name:   "tls",
+			Server: json.RawMessage(`{"enabled": true, "curve_preferences": ["X25519MLKEM768", "P256"]}`),
+			Client: json.RawMessage(`{}`),
+		},
+	}
+
+	if err := FillOutJson(inbound, "example.com"); err != nil {
+		t.Fatal(err)
+	}
+
+	var out map[string]interface{}
+	if err := json.Unmarshal(inbound.OutJson, &out); err != nil {
+		t.Fatal(err)
+	}
+	tls, ok := out["tls"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("tls is missing from out_json: %s", inbound.OutJson)
+	}
+	curves, ok := tls["curve_preferences"].([]interface{})
+	if !ok || len(curves) != 2 || curves[0] != "X25519MLKEM768" || curves[1] != "P256" {
+		t.Errorf("curve_preferences = %v, want the server list", tls["curve_preferences"])
+	}
+}
+
 func TestFillOutJsonSnellV6(t *testing.T) {
 	inbound := &model.Inbound{
 		Type:    "snell",
